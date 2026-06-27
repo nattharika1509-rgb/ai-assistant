@@ -19,28 +19,40 @@ describe("Audio Converter Utilities", () => {
     });
 
     it("should clamp values outside of [-1, 1] range to avoid overflow", () => {
-      const floatInput = new Float32Array([1.5, -2.0]);
-      const expectedInt16 = new Int16Array([32767, -32768]);
+      const floatInput = new Float32Array([1.5, -2.0, 999.0, -999.0]);
+      const expectedInt16 = new Int16Array([32767, -32768, 32767, -32768]);
 
       const result = convertFloat32ToInt16(floatInput);
       expect(result).toEqual(expectedInt16);
+    });
+
+    it("should handle empty Float32Array input without throwing", () => {
+      const floatInput = new Float32Array([]);
+      const result = convertFloat32ToInt16(floatInput);
+      expect(result.length).toBe(0);
+      expect(result).toBeInstanceOf(Int16Array);
     });
   });
 
   describe("Base64 and ArrayBuffer Conversions", () => {
     it("should correctly encode and decode binary buffers using Base64", () => {
-      // สร้าง binary buffer จำลอง
       const originalBytes = new Uint8Array([71, 101, 109, 105, 110, 105, 32, 76, 105, 118, 101]); // ข้อความ "Gemini Live"
-      
-      // แปลงเป็น Base64
       const base64String = arrayBufferToBase64(originalBytes.buffer);
       expect(base64String).toBe("R2VtaW5pIExpdmU=");
 
-      // แปลงกลับเป็น ArrayBuffer
       const decodedBuffer = base64ToArrayBuffer(base64String);
       const decodedBytes = new Uint8Array(decodedBuffer);
-      
       expect(decodedBytes).toEqual(originalBytes);
+    });
+
+    it("should handle empty strings and buffers", () => {
+      const emptyBuffer = new Uint8Array([]);
+      const base64String = arrayBufferToBase64(emptyBuffer.buffer);
+      expect(base64String).toBe("");
+
+      const decodedBuffer = base64ToArrayBuffer(base64String);
+      const decodedBytes = new Uint8Array(decodedBuffer);
+      expect(decodedBytes.length).toBe(0);
     });
   });
 
