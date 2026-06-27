@@ -130,6 +130,14 @@ export function useLiveConnection({
     disconnect();
     setError(null);
 
+    // ปลุกหรือสร้าง AudioContext ทันทีใน User Gesture Stack ป้องกันการบล็อกเสียงของเบราว์เซอร์
+    initAudioCtx();
+    if (audioCtxRef.current && audioCtxRef.current.state === "suspended") {
+      audioCtxRef.current.resume().catch((e) => {
+        console.warn("Failed to resume AudioContext on connection:", e);
+      });
+    }
+
     const wsUrl = `wss://${HOST}/${PATH}?key=${apiKey}`;
     
     try {
@@ -170,7 +178,6 @@ export function useLiveConnection({
         try {
           let data;
           if (event.data instanceof Blob) {
-            // Live API มักส่งข้อมูลเป็น JSON string แต่ในบางกรณีหากส่งเป็น Binary เราจะแปลงก่อน
             return;
           } else {
             data = JSON.parse(event.data);
@@ -195,7 +202,6 @@ export function useLiveConnection({
               }
             }
 
-            // ถ้า AI พูดจบเทิร์น
             if (data.serverContent.turnComplete) {
               console.log("Turn Complete");
             }
@@ -220,7 +226,7 @@ export function useLiveConnection({
       setError(err.message || "Failed to establish WebSocket connection.");
       setIsConnected(false);
     }
-  }, [apiKey, systemInstruction, disconnect, queueAudioChunk, onTextReceived]);
+  }, [apiKey, systemInstruction, disconnect, initAudioCtx, queueAudioChunk, onTextReceived]);
 
   // ส่งข้อมูลเสียงไมค์
   const sendAudioChunk = useCallback((base64Audio: string) => {

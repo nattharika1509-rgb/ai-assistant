@@ -36,6 +36,17 @@ export function useAudioRecorder({ onAudioData }: UseAudioRecorderProps) {
     try {
       stopRecording(); // เคลียร์ของเก่าก่อนถ้ามี
 
+      // 1. สร้าง AudioContext ขึ้นมาก่อนทันที เพื่อให้อยู่ใน User Gesture Context
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const audioContext = new AudioContextClass();
+      audioContextRef.current = audioContext;
+
+      // ปลุกการทำงานของ AudioContext ทันที
+      if (audioContext.state === "suspended") {
+        await audioContext.resume();
+      }
+
+      // 2. ค่อยมาขอสิทธิ์กล้อง/ไมโครโฟน
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
@@ -46,15 +57,10 @@ export function useAudioRecorder({ onAudioData }: UseAudioRecorderProps) {
 
       streamRef.current = stream;
 
-      // สร้าง AudioContext
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      const audioContext = new AudioContextClass();
-      audioContextRef.current = audioContext;
-
       const source = audioContext.createMediaStreamSource(stream);
       mediaStreamSourceRef.current = source;
 
-      // สร้าง ScriptProcessorNode (bufferSize = 2048 หรือ 4096)
+      // สร้าง ScriptProcessorNode (bufferSize = 2048)
       // Gemini ต้องการ PCM 16000Hz. เราจำเป็นต้องทำ resampling
       const bufferSize = 2048;
       const processor = audioContext.createScriptProcessor(bufferSize, 1, 1);
